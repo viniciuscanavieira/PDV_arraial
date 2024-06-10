@@ -1,0 +1,23 @@
+{
+  "name": "Lavagem",
+  "short_name": "Lavagem",
+  "start_url": "https://lava-rapido-project.vercel.app/",
+  "icons": [
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "background_color": "#E7E6E4",
+  "theme_color": "#E7E6E4",
+  "orientation": "portrait",
+  "display": "standalone"
+}
+
+
