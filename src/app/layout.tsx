@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lava Rapido Galp",
-  description: "Fechamento de folha para Lava Rapidos",
+  title: "Distribuidora Rava",
+  description: "Fechamento de folha para Distribuidora de Água",
   manifest: "/webmanifest.json",
 };
 
