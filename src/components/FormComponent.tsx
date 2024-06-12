@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FaRegTrashAlt } from "react-icons/fa";
+import { FaWhatsapp, FaRegTrashAlt } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -104,7 +104,14 @@ export const FormComponent = () => {
     const updatedLista = lista.filter((_, idx) => idx !== index);
     setLista(updatedLista);
   };
-
+  const handleWhatsApp = (index: number) => {
+    const item = lista[index];
+    const message = `Novo pedido\nProduto: ${item.produto}\nQuantidade: ${item.quantidade}\nEndereço/Cliente: ${item.endereco}\nValor: R$ ${item.valor}\nMétodo de Pagamento: ${item.metodoPagamento}\nHora: ${item.hora}\n\nPor favor, confirme a entrega após a conclusão.`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/559885631906?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+  
   const totalPagamento = lista
     .filter((item) => item.foiPago)
     .reduce((total, item) => total + item.valor, 0);
@@ -237,79 +244,84 @@ export const FormComponent = () => {
           <div className="flex justify-center">
             <button
               onClick={handleAdicionar}
-              className="bg-[#EA642D] p-2 w-80 rounded-full mt-10 text-white font-bold"
-            >
+              className="bg-[#EA642D] p-2 w-80 rounded-full mt-10 text-white font-bold">
               Adicionar
             </button>
           </div>
         </form>
 
         <div className="mt-8">
-          <h2 className="flex justify-center font-semibold text-xl text-[#EA642D] border-b border-gray-300">
-            Lista de Pedidos
-          </h2>
-          {lista.map((item, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-3 font-semibold text-md gap-2 border-b border-gray-300 p-4 relative"
-            >
-              <p className="flex flex-col font-bold">
-                Produto:
-                <span className="font-semibold"> {item.produto}</span>
-              </p>
-              <p className="flex flex-col font-bold">
-                Quantidade:
-                <span className="font-semibold"> {item.quantidade}</span>
-              </p>
-              <p className="flex flex-col font-bold">
-                Endereço/Cliente:
-                <span className="font-semibold"> {item.endereco}</span>
-              </p>
-              <p className="flex flex-col font-bold">
-                Valor:
-                <span className="font-semibold"> R$ {item.valor}</span>
-              </p>
-              <p className="flex flex-col font-bold">
-                Método de Pagamento:
-                <span className="font-semibold"> {item.metodoPagamento}</span>
-              </p>
-              <p className="flex flex-col font-bold">
-                Hora:
-                <span className="font-semibold"> {item.hora}</span>
-              </p>
-              <div className="absolute bottom-2 right-2 flex items-center">
-                <label className="font-bold mr-2">Pago</label>
-                <input
-                  type="checkbox"
-                  checked={item.foiPago}
-                  onChange={() => handleCheckboxChange(index)}
-                  className="w-5 h-5 mr-2"
-                />
-                <FaRegTrashAlt
-                  className="text-red-500 cursor-pointer"
-                  onClick={() => handleRemover(index)}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center">
-          <button
-            onClick={generatePDF}
-            className="bg-[#EA642D] p-2 w-80 rounded-full mt-10 text-white font-bold"
-          >
-            Gerar PDF
-          </button>
-        </div>
-        <div className="flex justify-center">
-          <button
-            onClick={handleIniciarNovoDia}
-            className="bg-red-500 p-2 w-80 rounded-full mt-10 text-white font-bold"
-          >
-            Iniciar Novo Dia
-          </button>
-        </div>
+  <h2 className="flex justify-center font-semibold text-xl text-[#EA642D] border-b border-gray-300">
+    Lista de Pedidos
+  </h2>
+  {lista.map((item, index) => (
+    <div
+      key={index}
+      className="grid grid-cols-3 font-semibold text-md gap-2 border-b border-gray-300 p-4 relative"
+    >
+      <p className="flex flex-col font-bold">
+        Produto:
+        <span className="font-semibold"> {item.produto}</span>
+      </p>
+      <p className="flex flex-col font-bold">
+        Quantidade:
+        <span className="font-semibold"> {item.quantidade}</span>
+      </p>
+      <p className="flex flex-col font-bold">
+        Endereço/Cliente:
+        <span className="font-semibold"> {item.endereco}</span>
+      </p>
+      <p className="flex flex-col font-bold">
+        Valor:
+        <span className="font-semibold"> R$ {item.valor}</span>
+      </p>
+      <p className="flex flex-col font-bold">
+        Método de Pagamento:
+        <span className="font-semibold"> {item.metodoPagamento}</span>
+      </p>
+      <p className="flex flex-col font-bold">
+        Hora:
+        <span className="font-semibold"> {item.hora}</span>
+      </p>
+      <div className="absolute bottom-2 right-2 flex items-center">
+        <label className="font-bold mr-2">Pago</label>
+        <input
+          type="checkbox"
+          checked={item.foiPago}
+          onChange={() => handleCheckboxChange(index)}
+          className="w-5 h-5 mr-2"
+        />
+        <FaRegTrashAlt
+          className="text-red-500 cursor-pointer"
+          onClick={() => handleRemover(index)}
+        />
+        <button
+          className="ml-2 bg-green-500 p-2 rounded-full text-white"
+          onClick={() => handleWhatsApp(index)}
+        >
+          <FaWhatsapp />
+        </button>
       </div>
-    </>
-  );
+    </div>
+  ))}
+</div>
+<div className="flex justify-center">
+  <button
+    onClick={generatePDF}
+    className="bg-[#EA642D] p-2 w-80 rounded-full mt-10 text-white font-bold"
+  >
+    Gerar PDF
+  </button>
+</div>
+<div className="flex justify-center">
+  <button
+    onClick={handleIniciarNovoDia}
+    className="bg-red-500 p-2 w-80 rounded-full mt-10 text-white font-bold"
+  >
+    Iniciar Novo Dia
+  </button>
+</div>
+</div>
+</>
+);
 };
