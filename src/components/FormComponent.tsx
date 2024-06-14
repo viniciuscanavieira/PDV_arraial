@@ -115,22 +115,30 @@ export const FormComponent = () => {
     setLista(updatedLista);
   };
 
-  const handleWhatsApp = (index: number) => {
-    const item = lista[index];
-    const numeroPedido = lista.length - index; // Calcular o número do pedido com base na posição inversa na lista
-    const produtosMensagem = item.produtos.map(p => `${p.nome} - ${p.quantidade}x`).join("\n");
-    const message = `*Novo Pedido *Número ${numeroPedido}*\nHora: ${item.hora}\n\n` +
-                    `*Produtos Solicitados:*\n${produtosMensagem}\n\n` +
-                    `*Endereço/Cliente:*\n${item.endereco}\n\n` +
-                    `*Método de Pagamento:* ${item.metodoPagamento}\n` +
-                    `*Valor Total:* R$ ${item.valor.toFixed(2)}\n\n` +
-                    `*Detalhes do Pagamento:*\n` +
-                    `- Foi Pago: ${item.foiPago ? "Sim" : "Não"}\n` +
-                    `Por favor, confirme a entrega após a conclusão.\n`;
+  const handleWhatsApp = (pedidoIndex: number) => {
+    const item = lista[pedidoIndex];
+    const numeroPedido = lista.length - pedidoIndex; // Calcular o número do pedido com base na posição inversa na lista
+    
+    let message = `*Novo Pedido Número ${numeroPedido}*\nHora: ${item.hora}\n\n`;
+  
+    item.produtos.forEach((produto, index) => {
+      message += `*Produto ${index + 1}:*\n${produto.nome} - ${produto.quantidade}x\n`;
+    });
+  
+    message += `\n*Endereço/Cliente:*\n${item.endereco}\n\n` +
+               `*Método de Pagamento:* ${item.metodoPagamento}\n` +
+               `*Valor Total:* R$ ${item.valor.toFixed(2)}\n\n` +
+               `*Detalhes do Pagamento:*\n` +
+               `- Foi Pago: ${item.foiPago ? "Sim" : "Não"}\n\n` +
+               `Por favor, confirme a entrega após a conclusão.\n`;
+  
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/559885631906?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
-};
+  };
+  
+
+  
 
 
   const totalPagamento = lista
@@ -338,10 +346,9 @@ export const FormComponent = () => {
               </div>
             </div>
             <div className="flex justify-between items-center mt-4">
-              <button
-                className="bg-green-500 p-2 rounded-full text-white flex items-center space-x-2"
-                onClick={() => handleWhatsApp(index)}
-              >
+            <button
+                onClick={() => handleWhatsApp(lista.length - 1)}
+                className="bg-green-500 p-2 rounded-full text-white flex items-center space-x-2">
                 <FaWhatsapp />
                 <span>Enviar</span>
               </button>
