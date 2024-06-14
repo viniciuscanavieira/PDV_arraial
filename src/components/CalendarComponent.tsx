@@ -48,7 +48,7 @@ export const CalendarComponent = () => {
   return (
     <>
       <div className="flex flex-col justify-center items-center mt-4">
-        <p className="font-bold text-lg text-[#EA642D]">
+        <p className="font-bold text-lg text-[#1d3099]">
           {formatDate(selectDate)}
         </p>
         <button

@@ -6,8 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 interface Item {
-  produto: string;
-  quantidade: number;
+  produtos: { nome: string; quantidade: number; preco: number }[];
   endereco: string;
   valor: number;
   metodoPagamento: string;
@@ -16,18 +15,19 @@ interface Item {
   foiEntregue: boolean;
 }
 
-const produtos = {
+const produtosDisponiveis = {
   Agua: 8.50,
   Gas: 110.0,
   CartelaDeOvos: 24.0,
 };
 
 export const FormComponent = () => {
-  const [produto, setProduto] = useState("Agua");
+  const [produtoSelecionado, setProdutoSelecionado] = useState("Agua");
   const [quantidade, setQuantidade] = useState(1);
   const [endereco, setEndereco] = useState("");
   const [metodoPagamento, setMetodoPagamento] = useState("Pix");
   const [foiPago, setFoiPago] = useState(false);
+  const [listaProdutos, setListaProdutos] = useState<{ nome: string; quantidade: number; preco: number }[]>([]);
   const [lista, setLista] = useState<Item[]>([]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export const FormComponent = () => {
   };
 
   const handleProdutoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setProduto(e.target.value);
+    setProdutoSelecionado(e.target.value);
   };
 
   const handleQuantidadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,99 +66,128 @@ export const FormComponent = () => {
     setFoiPago(e.target.checked);
   };
 
-  const handleAdicionar = (e: { preventDefault: () => void }) => {
+  const handleAdicionarProduto = (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    if (!produto || !quantidade || !endereco || produto === "" || endereco === "") {
-      alert("Por favor, preencha todos os campos!");
+    if (!produtoSelecionado || !quantidade || produtoSelecionado === "" || quantidade <= 0) {
+      alert("Por favor, selecione um produto e quantidade válida!");
       return;
     }
-    const valor = quantidade * produtos[produto as keyof typeof produtos];
-    const newItem: Item = {
-      produto,
+
+    const preco = produtosDisponiveis[produtoSelecionado as keyof typeof produtosDisponiveis];
+    const novoProduto = {
+      nome: produtoSelecionado,
       quantidade,
+      preco,
+    };
+
+    setListaProdutos([...listaProdutos, novoProduto]);
+    setProdutoSelecionado("Agua");
+    setQuantidade(1);
+  };
+
+  const handleAdicionarPedido = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    if (listaProdutos.length === 0 || !endereco) {
+      alert("Por favor, adicione produtos e preencha o endereço!");
+      return;
+    }
+
+    const valorTotal = listaProdutos.reduce((total, produto) => total + produto.quantidade * produto.preco, 0);
+    const novoPedido: Item = {
+      produtos: listaProdutos,
       endereco,
-      valor,
+      valor: valorTotal,
       metodoPagamento,
       foiPago,
       hora: getCurrentTime(),
       foiEntregue: false,
     };
-    setLista([...lista, newItem]);
 
-    setProduto("Agua");
-    setQuantidade(1);
+    setLista([...lista, novoPedido]);
+    setListaProdutos([]);
     setEndereco("");
     setMetodoPagamento("Pix");
     setFoiPago(false);
   };
 
-  const handleRemover = (index: number) => {
+  const handleRemoverPedido = (index: number) => {
     const updatedLista = lista.filter((_, idx) => idx !== index);
     setLista(updatedLista);
   };
+
   const handleWhatsApp = (index: number) => {
     const item = lista[index];
-    const message = `*Novo pedido ${item.hora}*\n*Produto:* ${item.produto}\n*Quantidade:* ${item.quantidade}\n*Endereço/Cliente:* ${item.endereco}\n*Método de Pagamento:* ${item.metodoPagamento}\n*Valor: R$* ${item.valor} reais\n\nPor favor, confirme a entrega após a conclusão.`;
+    const numeroPedido = lista.length - index; // Calcular o número do pedido com base na posição inversa na lista
+    const produtosMensagem = item.produtos.map(p => `${p.nome} - ${p.quantidade}x`).join("\n");
+    const message = `*Novo Pedido *Número ${numeroPedido}*\nHora: ${item.hora}\n\n` +
+                    `*Produtos Solicitados:*\n${produtosMensagem}\n\n` +
+                    `*Endereço/Cliente:*\n${item.endereco}\n\n` +
+                    `*Método de Pagamento:* ${item.metodoPagamento}\n` +
+                    `*Valor Total:* R$ ${item.valor.toFixed(2)}\n\n` +
+                    `*Detalhes do Pagamento:*\n` +
+                    `- Foi Pago: ${item.foiPago ? "Sim" : "Não"}\n` +
+                    `Por favor, confirme a entrega após a conclusão.\n`;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/559885631906?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
-  };
-  
+};
+
+
   const totalPagamento = lista
     .filter((item) => item.foiPago)
     .reduce((total, item) => total + item.valor, 0);
 
-    const generatePDF = () => {
-      const doc = new jsPDF();
-    
-      doc.text("Relatório do Dia", 14, 22);
-      doc.text(
-        `Data: ${
-          new Date().toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }) ?? ""
-        }`,
-        14,
-        32
-      );
-    
-      autoTable(doc, {
-        head: [["Número do Pedido", "Produto", "Quantidade", "Endereço/Cliente", "Valor", "Pagamento", "Hora", "Pago", "Entregue"]],
-        body: lista.map((item, index) => [
-          lista.length - index,
-          item.produto,
-          item.quantidade,
-          item.endereco,
-          `R$ ${item.valor.toFixed(2)}`,
-          item.metodoPagamento,
-          item.hora,
-          item.foiPago ? "Sim" : "Não",
-          item.foiEntregue ? "Sim" : "Não",
-        ]),
-        startY: 40,
-        styles: { halign: 'center' }, // Adicione esta linha
-      });
-    
-      autoTable(doc, {
-        body: [
-          [`Total Caixa: R$ ${totalPagamento.toFixed(2)}`],
-        ],
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        styles: { halign: 'center' }, // Adicione esta linha
-      });
-    
-      doc.save(
-        `Relatorio_${
-          new Date().toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }) ?? ""
-        }.pdf`
-      );
-    };
+  const generatePDF = () => {
+    const doc = new jsPDF();
+
+    doc.text("Relatório do Dia", 14, 22);
+    doc.text(
+      `Data: ${
+        new Date().toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }) ?? ""
+      }`,
+      14,
+      32
+    );
+
+    autoTable(doc, {
+      head: [["Número do Pedido", "Produtos", "Endereço/Cliente", "Valor", "Pagamento", "Hora", "Pago", "Entregue"]],
+      body: lista.map((item, index) => [
+        lista.length - index,
+        item.produtos.map(p => `${p.nome} (Qtd: ${p.quantidade})`).join(", "),
+        item.endereco,
+        `R$ ${item.valor.toFixed(2)}`,
+        item.metodoPagamento,
+        item.hora,
+        item.foiPago ? "Sim" : "Não",
+        item.foiEntregue ? "Sim" : "Não",
+      ]),
+      startY: 40,
+      styles: { halign: 'center' },
+    });
+
+    autoTable(doc, {
+      body: [
+        [`Total Caixa: R$ ${totalPagamento.toFixed(2)}`],
+      ],
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      styles: { halign: 'center' },
+    });
+
+    doc.save(
+      `Relatorio_${
+        new Date().toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }) ?? ""
+      }.pdf`
+    );
+  };
+
   const handleIniciarNovoDia = () => {
     const userConfirmed = window.confirm(
       "Você tem certeza que deseja apagar a lista atual?"
@@ -170,80 +199,83 @@ export const FormComponent = () => {
       return;
     }
   };
+
   const handleCheckboxChange = (index: number) => {
-    // Calcula o índice correto
     const realIndex = lista.length - 1 - index;
-  
-    // Cria uma cópia da lista de pedidos
     const novaLista = [...lista];
-    
-    // Atualiza o status de pagamento do pedido específico
     novaLista[realIndex].foiPago = !novaLista[realIndex].foiPago;
-    
-    // Atualiza a lista de pedidos
     setLista(novaLista);
   };
-  
+
   const handleEntregaChange = (index: number) => {
-    // Calcula o índice correto
     const realIndex = lista.length - 1 - index;
-  
-    // Cria uma cópia da lista de pedidos
     const novaLista = [...lista];
-    
-    // Atualiza o status de entrega do pedido específico
     novaLista[realIndex].foiEntregue = !novaLista[realIndex].foiEntregue;
-    
-    // Atualiza a lista de pedidos
     setLista(novaLista);
   };
 
   return (
-    <>
-      <div>
-        <form>
-          <div className="flex flex-col px-2">
-            <label className="font-semibold text-[#1d3099]">
-              Produto:
-            </label>
-            <select
-              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-8"
-              value={produto}
-              onChange={handleProdutoChange}
+    <div className="max-w-screen-lg mx-auto p-4">
+      <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+        <h1 className="text-center text-2xl font-bold text-white mb-4">Adicionar Pedido</h1>
+        <form onSubmit={handleAdicionarProduto} className="mb-4">
+          <div className="flex flex-wrap justify-between">
+            <div className="flex flex-col w-full md:w-1/2 p-2">
+              <label className="font-semibold text-[#ffffff]">Produto:</label>
+              <select
+                className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
+                value={produtoSelecionado}
+                onChange={handleProdutoChange}
+              >
+                {Object.keys(produtosDisponiveis).map((produto, idx) => (
+                  <option key={idx} value={produto}>{produto}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col w-full md:w-1/2 p-2">
+              <label className="font-semibold text-[#ffffff]">Quantidade:</label>
+              <input
+                className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
+                type="number"
+                value={quantidade}
+                onChange={handleQuantidadeChange}
+              />
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              className="bg-[#127409] p-2 w-full md:w-1/2 rounded-full mt-4 text-white font-bold"
             >
-              <option value="Agua">Água</option>
-              <option value="Gas">Gás</option>
-              <option value="CartelaDeOvos">Cartela de Ovos</option>
-            </select>
+              Adicionar Produto
+            </button>
           </div>
-          <div className="flex flex-col px-2">
-            <label className="font-semibold text-[#1d3099]">
-              Quantidade:
-            </label>
+        </form>
+
+        <div className="bg-gray-700 p-4 rounded-lg mb-4">
+          <h2 className="text-lg font-bold text-white mb-2">Produtos do Pedido</h2>
+          {listaProdutos.map((produto, index) => (
+            <div key={index} className="flex justify-between items-center border-b border-gray-300 p-2">
+              <span className="text-white">{produto.nome} (Qtd: {produto.quantidade})</span>
+              <span className="text-white">R$ {(produto.preco * produto.quantidade).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+
+        <form>
+          <div className="flex flex-col p-2">
+            <label className="font-semibold text-[#ffffff]">Endereço:</label>
             <input
-              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-8"
-              type="number"
-              value={quantidade}
-              onChange={handleQuantidadeChange}
-            />
-          </div>
-          <div className="flex flex-col px-2">
-            <label className="font-semibold text-[#1d3099]">
-              Endereço/Cliente:
-            </label>
-            <input
-              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-8"
+              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
               type="text"
               value={endereco}
               onChange={handleEnderecoChange}
             />
           </div>
-          <div className="flex flex-col px-2">
-            <label className="font-semibold text-[#1d3099]">
-              Método de Pagamento:
-            </label>
+          <div className="flex flex-col p-2">
+            <label className="font-semibold text-[#ffffff]">Método de Pagamento:</label>
             <select
-              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-[#403C3D] p-2 text-zinc-100 text-bold rounded h-8"
+              className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
               value={metodoPagamento}
               onChange={handleMetodoPagamentoChange}
             >
@@ -251,118 +283,113 @@ export const FormComponent = () => {
               <option value="Dinheiro">Dinheiro</option>
             </select>
           </div>
-          <div className="flex justify-between items-center px-2 gap-3">
-            <div className="flex gap-2 mr-4 mt-5">
-              <label className="font-bold text-[#1d3099]">Pago</label>
-              <input
-                type="checkbox"
-                id="pagamento"
-                checked={foiPago}
-                onChange={handleFoiPagoChange}
-                className="w-6 h-6"
-              />
-            </div>
+          <div className="flex items-center p-2 mt-4">
+            <label className="font-bold text-[#ffffff] mr-2">Pago</label>
+            <input
+              type="checkbox"
+              checked={foiPago}
+              onChange={handleFoiPagoChange}
+              className="w-6 h-6"
+            />
           </div>
           <div className="flex justify-center">
             <button
-              onClick={handleAdicionar}
-              className="bg-[#127409] p-2 w-80 rounded-full mt-10 text-white font-bold">
-              Adicionar
+              onClick={handleAdicionarPedido}
+              className="bg-[#127409] p-2 w-full md:w-1/2 rounded-full mt-4 text-white font-bold"
+            >
+              Adicionar Pedido
             </button>
           </div>
         </form>
+      </div>
 
-        <div className="mt-8">
-  <h2 className="flex justify-center font-semibold text-xl text-[#1d3099] border-b border-gray-300">
-    Lista de Pedidos
-  </h2>
-  {lista.slice().reverse().map((item, index) => (
-    <div
-      key={index}
-      className="grid grid-cols-3 font-semibold text-md gap-1 border-b border-gray-300 p-4 relative"
-    >
-      <h3 className="col-span-3 font-bold text-center text-[#ffffff] bg-slate-500 mb-2">Pedido número {lista.length - index}</h3>
-      <hr className="col-span-3 border-gray-300"/>
-      <p className="flex flex-col font-bold">
-        Produto:
-        <span className="font-semibold"> {item.produto}</span>
-      </p>
-      <p className="flex flex-col font-bold">
-        Quantidade:
-        <span className="font-semibold"> {item.quantidade}</span>
-      </p>
-      <p className="flex flex-col font-bold">
-        Endereço:
-        <span className="font-semibold"> {item.endereco}</span>
-      </p>
-      <p className="flex flex-col font-bold">
-        Valor:
-        <span className="font-semibold"> R$ {item.valor}</span>
-      </p>
-      <p className="flex flex-col font-bold">
-        Pagamento:
-        <span className="font-semibold"> {item.metodoPagamento}</span>
-      </p>
-      <p className="flex flex-col font-bold">
-        Hora:
-        <span className="font-semibold"> {item.hora}</span>
-      </p>
-      <hr className="col-span-3 border-gray-300 p-4"/>
-      <div className="absolute bottom-1 left-2 flex items-center space-x-4">
+      <div className="mt-8">
+        <h2 className="text-center font-semibold text-xl text-[#1d3099] mb-4 border-b border-gray-300">
+          Lista de Pedidos
+        </h2>
+        {lista.slice().reverse().map((item, index) => (
+          <div
+            key={index}
+            className="bg-gray-800 p-4 rounded-lg shadow-lg mb-4"
+          >
+            <h3 className="text-center font-bold text-lg text-white mb-2">Pedido número {lista.length - index}</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-3 text-white font-bold mb-2">
+                Produtos:
+                <div className="font-normal">
+                  {item.produtos.map(p => `${p.nome} (Qtd: ${p.quantidade})`).join(", ")}
+                </div>
+              </div>
+              <div className="col-span-3 text-white font-bold mb-2">
+                Endereço:
+                <div className="font-normal">{item.endereco}</div>
+              </div>
+              <div className="col-span-3 text-white font-bold mb-2">
+                Valor:
+                <div className="font-normal">R$ {item.valor.toFixed(2)}</div>
+              </div>
+              <div className="col-span-3 text-white font-bold mb-2">
+                Pagamento:
+                <div className="font-normal">{item.metodoPagamento}</div>
+              </div>
+              <div className="col-span-3 text-white font-bold mb-2">
+                Hora:
+                <div className="font-normal">{item.hora}</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <button
+                className="bg-green-500 p-2 rounded-full text-white flex items-center space-x-2"
+                onClick={() => handleWhatsApp(index)}
+              >
+                <FaWhatsapp />
+                <span>Enviar</span>
+              </button>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <label className="font-bold text-white">Pago</label>
+                  <input
+                    type="checkbox"
+                    checked={item.foiPago}
+                    onChange={() => handleCheckboxChange(index)}
+                    className="w-5 h-5"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="font-bold text-white">Entregue</label>
+                  <input
+                    type="checkbox"
+                    checked={item.foiEntregue}
+                    onChange={() => handleEntregaChange(index)}
+                    className="w-5 h-5"
+                  />
+                </div>
+                <FaRegTrashAlt
+                  className="text-red-500 cursor-pointer"
+                  onClick={() => handleRemoverPedido(index)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-center">
         <button
-          className="bg-green-500 p-2 rounded-full text-white flex items-center space-x-2"
-          onClick={() => handleWhatsApp(index)}
+          onClick={generatePDF}
+          className="bg-[#EA642D] p-2 w-full md:w-1/2 rounded-full mt-4 text-white font-bold"
         >
-          <FaWhatsapp />
-          <span>Enviar</span>
+          Gerar Relatório do Dia
         </button>
       </div>
-      <div className="absolute bottom-3 right-2 flex items-center space-x-4">
-        <div className="flex items-center space-x-2">
-          <label className="font-bold">Pago</label>
-          <input
-            type="checkbox"
-            checked={item.foiPago}
-            onChange={() => handleCheckboxChange(index)}
-            className="w-5 h-5"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <label className="font-bold">Entregue</label>
-          <input
-            type="checkbox"
-            checked={item.foiEntregue}
-            onChange={() => handleEntregaChange(index)}
-            className="w-5 h-5"
-          />
-        </div>
-        <div className="ml-4">
-          <FaRegTrashAlt
-            className="text-red-500 cursor-pointer"
-            onClick={() => handleRemover(index)}
-          />
-        </div>
+      <div className="flex justify-center">
+        <button
+          onClick={handleIniciarNovoDia}
+          className="bg-red-500 p-2 w-full md:w-1/2 rounded-full mt-4 text-white font-bold"
+        >
+          Iniciar Novo Dia
+        </button>
       </div>
     </div>
-  ))}
-</div>
-<div className="flex justify-center">
-  <button
-    onClick={generatePDF}
-    className="bg-[#EA642D] p-2 w-80 rounded-full mt-10 text-white font-bold"
-  >
-    Gerar Relatorio do Dia
-  </button>
-</div>
-<div className="flex justify-center">
-  <button
-    onClick={handleIniciarNovoDia}
-    className="bg-red-500 p-2 w-80 rounded-full mt-10 text-white font-bold"
-  >
-    Iniciar Novo Dia
-  </button>
-</div>
-</div>
-</>
-);
+  );
 };
