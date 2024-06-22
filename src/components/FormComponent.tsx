@@ -18,11 +18,11 @@ interface Item {
 }
 
 const produtosDisponiveis = {
-  Agua: 8.50,
-  Coca: 6.0,
-  Jesus: 6.0,
-  Guarana: 6.0,
-  Brhama: 7.0,
+  Agua: 3.0,
+  Coca: 5.0,
+  Jesus: 5.0,
+  Guarana: 5.0,
+  Brhama: 5.0,
 };
 
 export const FormComponent = () => {
@@ -213,16 +213,19 @@ export const FormComponent = () => {
       // Incluir a quantidade de águas, gas e cartelas de ovos vendidas
       const quantidades = {
         aguas: calcularQuantidadeProdutos("Agua"),
-        gas: calcularQuantidadeProdutos("Coca"),
-        brhama: calcularQuantidadeProdutos("Brhama")
+        coca: calcularQuantidadeProdutos("Coca"),
+        brhama: calcularQuantidadeProdutos("Brhama"),
+        guarana: calcularQuantidadeProdutos("Guarana"),
+        jesus: calcularQuantidadeProdutos("Jesus")
       };
     
       const startYQuantidades = (doc as any).lastAutoTable.finalY + 20;
       doc.text("Quantidades vendidas:", 14, startYQuantidades);
       doc.text(`Águas: ${quantidades.aguas}`, 20, startYQuantidades + 10);
-      doc.text(`Gás: ${quantidades.gas}`, 20, startYQuantidades + 20);
-      doc.text(`Cartelas de Ovos: ${quantidades.brhama}`, 20, startYQuantidades + 30);
-    
+      doc.text(`Coca: ${quantidades.coca}`, 20, startYQuantidades + 20);
+      doc.text(`Brhama: ${quantidades.brhama}`, 20, startYQuantidades + 30);
+      doc.text(`Guarana: ${quantidades.guarana}`, 40, startYQuantidades + 40);
+      doc.text(`Jesus: ${quantidades.jesus}`, 50, startYQuantidades + 50);
       doc.save(
         `Relatorio_${
           new Date().toLocaleDateString("pt-BR", {
