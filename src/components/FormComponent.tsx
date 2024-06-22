@@ -7,26 +7,32 @@ import autoTable from "jspdf-autotable";
 
 interface Item {
   produtos: { nome: string; quantidade: number; preco: number }[];
-  endereco: string;
+  nome: string;
   valor: number;
   metodoPagamento: string;
   foiPago: boolean;
   hora: string;
   foiEntregue: boolean;
+  valorPago?: number;
+  troco?: number;
 }
 
 const produtosDisponiveis = {
   Agua: 8.50,
-  Gas: 110.0,
-  CartelaDeOvos: 24.0,
+  Coca: 6.0,
+  Jesus: 6.0,
+  Guarana: 6.0,
+  Brhama: 7.0,
 };
 
 export const FormComponent = () => {
   const [produtoSelecionado, setProdutoSelecionado] = useState("Agua");
   const [quantidade, setQuantidade] = useState(1);
-  const [endereco, setEndereco] = useState("");
+  const [nome, setNome] = useState("");
   const [metodoPagamento, setMetodoPagamento] = useState("Pix");
   const [foiPago, setFoiPago] = useState(false);
+  const [necessitaTroco, setNecessitaTroco] = useState(false);
+  const [valorPago, setValorPago] = useState<number | undefined>(undefined);
   const [listaProdutos, setListaProdutos] = useState<{ nome: string; quantidade: number; preco: number }[]>([]);
   const [lista, setLista] = useState<Item[]>([]);
 
@@ -54,8 +60,8 @@ export const FormComponent = () => {
     setQuantidade(Number(e.target.value));
   };
 
-  const handleEnderecoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEndereco(e.target.value);
+  const handleNomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNome(e.target.value);
   };
 
   const handleMetodoPagamentoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -64,6 +70,17 @@ export const FormComponent = () => {
 
   const handleFoiPagoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFoiPago(e.target.checked);
+  };
+
+  const handleNecessitaTrocoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNecessitaTroco(e.target.checked);
+    if (!e.target.checked) {
+      setValorPago(undefined);
+    }
+  };
+
+  const handleValorPagoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValorPago(Number(e.target.value));
   };
 
   const handleAdicionarProduto = (e: { preventDefault: () => void }) => {
@@ -87,27 +104,36 @@ export const FormComponent = () => {
 
   const handleAdicionarPedido = (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    if (listaProdutos.length === 0 || !endereco) {
+    if (listaProdutos.length === 0 || !nome) {
       alert("Por favor, adicione produtos e preencha o endereço!");
       return;
     }
 
     const valorTotal = listaProdutos.reduce((total, produto) => total + produto.quantidade * produto.preco, 0);
+    let troco = undefined;
+    if (necessitaTroco && valorPago !== undefined) {
+      troco = valorPago - valorTotal;
+    }
+
     const novoPedido: Item = {
       produtos: listaProdutos,
-      endereco,
+      nome,
       valor: valorTotal,
       metodoPagamento,
       foiPago,
       hora: getCurrentTime(),
       foiEntregue: false,
+      valorPago,
+      troco,
     };
 
     setLista([...lista, novoPedido]);
     setListaProdutos([]);
-    setEndereco("");
+    setNome("");
     setMetodoPagamento("Pix");
     setFoiPago(false);
+    setNecessitaTroco(false);
+    setValorPago(undefined);
   };
 
   const handleRemoverPedido = (index: number) => {
@@ -120,81 +146,107 @@ export const FormComponent = () => {
     const numeroPedido = lista.length - pedidoIndex; // Calcular o número do pedido com base na posição inversa na lista
     
     let message = `*Novo Pedido Número ${numeroPedido}*\nHora: ${item.hora}\n\n`;
-  
+  ''
     item.produtos.forEach((produto, index) => {
       message += `*Produto ${index + 1}:*\n${produto.nome} - ${produto.quantidade}x\n`;
     });
   
-    message += `\n*Endereço/Cliente:*\n${item.endereco}\n\n` +
+    message += `\n*Endereço/Cliente:*\n${item.nome}\n\n` +
                `*Método de Pagamento:* ${item.metodoPagamento}\n` +
                `*Valor Total:* R$ ${item.valor.toFixed(2)}\n\n` +
                `*Detalhes do Pagamento:*\n` +
-               `- Foi Pago: ${item.foiPago ? "Sim" : "Não"}\n\n` +
+               `- Foi Pago: ${item.foiPago ? "Sim" : "Não"}\n` +
+               `- Valor Pago: ${item.valorPago !== undefined ? `R$ ${item.valorPago.toFixed(2)}` : "N/A"}\n` +
+               `- Troco: ${item.troco !== undefined ? `R$ ${item.troco.toFixed(2)}` : "N/A"}\n\n` +
                `Por favor, confirme a entrega após a conclusão.\n`;
   
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/559885631906?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
   };
-  
-
-  
-
 
   const totalPagamento = lista
     .filter((item) => item.foiPago)
     .reduce((total, item) => total + item.valor, 0);
-
-  const generatePDF = () => {
-    const doc = new jsPDF();
-
-    doc.text("Relatório do Dia", 14, 22);
-    doc.text(
-      `Data: ${
-        new Date().toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }) ?? ""
-      }`,
-      14,
-      32
-    );
-
-    autoTable(doc, {
-      head: [["Número do Pedido", "Produtos", "Endereço/Cliente", "Valor", "Pagamento", "Hora", "Pago", "Entregue"]],
-      body: lista.map((item, index) => [
-        lista.length - index,
-        item.produtos.map(p => `${p.nome} (Qtd: ${p.quantidade})`).join(", "),
-        item.endereco,
-        `R$ ${item.valor.toFixed(2)}`,
-        item.metodoPagamento,
-        item.hora,
-        item.foiPago ? "Sim" : "Não",
-        item.foiEntregue ? "Sim" : "Não",
-      ]),
-      startY: 40,
-      styles: { halign: 'center' },
-    });
-
-    autoTable(doc, {
-      body: [
-        [`Total Caixa: R$ ${totalPagamento.toFixed(2)}`],
-      ],
-      startY: (doc as any).lastAutoTable.finalY + 10,
-      styles: { halign: 'center' },
-    });
-
-    doc.save(
-      `Relatorio_${
-        new Date().toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }) ?? ""
-      }.pdf`
-    );
-  };
+    const generatePDF = () => {
+      const doc = new jsPDF();
+    
+      doc.text("Relatório do Dia", 14, 22);
+      doc.text(
+        `Data: ${
+          new Date().toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }) ?? ""
+        }`,
+        14,
+        32
+      );
+    
+      autoTable(doc, {
+        head: [["Número do Pedido", "Produtos", "Endereço/Cliente", "Valor", "Pagamento", "Hora", "Pago", "Entregue", "Valor Pago", "Troco"]],
+        body: lista.map((item, index) => [
+          lista.length - index,
+          item.produtos.map(p => `${p.nome} (Qtd: ${p.quantidade})`).join(", "),
+          item.nome,
+          `R$ ${item.valor.toFixed(2)}`,
+          item.metodoPagamento,
+          item.hora,
+          item.foiPago ? "Sim" : "Não",
+          item.foiEntregue ? "Sim" : "Não",
+          item.valorPago !== undefined ? `R$ ${item.valorPago.toFixed(2)}` : "N/A",
+          item.troco !== undefined ? `R$ ${item.troco.toFixed(2)}` : "N/A",
+        ]),
+        startY: 40,
+        styles: { halign: 'center' },
+      });
+    
+      autoTable(doc, {
+        body: [
+          [`Total Caixa: R$ ${totalPagamento.toFixed(2)}`],
+        ],
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        styles: { halign: 'center' },
+      });
+    
+      // Incluir a quantidade de águas, gas e cartelas de ovos vendidas
+      const quantidades = {
+        aguas: calcularQuantidadeProdutos("Agua"),
+        gas: calcularQuantidadeProdutos("Coca"),
+        brhama: calcularQuantidadeProdutos("Brhama")
+      };
+    
+      const startYQuantidades = (doc as any).lastAutoTable.finalY + 20;
+      doc.text("Quantidades vendidas:", 14, startYQuantidades);
+      doc.text(`Águas: ${quantidades.aguas}`, 20, startYQuantidades + 10);
+      doc.text(`Gás: ${quantidades.gas}`, 20, startYQuantidades + 20);
+      doc.text(`Cartelas de Ovos: ${quantidades.brhama}`, 20, startYQuantidades + 30);
+    
+      doc.save(
+        `Relatorio_${
+          new Date().toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }) ?? ""
+        }.pdf`
+      );
+    };
+    
+    // Função auxiliar para calcular a quantidade de produtos vendidos
+    const calcularQuantidadeProdutos = (produtosDisponiveis: string) => {
+      let quantidade = 0;
+      lista.forEach(item => {
+        item.produtos.forEach(p => {
+          if (p.nome === produtosDisponiveis) {
+            quantidade += p.quantidade;
+          }
+        });
+      });
+      return quantidade;
+    };
+    
 
   const handleIniciarNovoDia = () => {
     const userConfirmed = window.confirm(
@@ -272,12 +324,12 @@ export const FormComponent = () => {
 
         <form>
           <div className="flex flex-col p-2">
-            <label className="font-semibold text-[#ffffff]">Endereço:</label>
+            <label className="font-semibold text-[#ffffff]">Nome:</label>
             <input
               className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
               type="text"
-              value={endereco}
-              onChange={handleEnderecoChange}
+              value={nome}
+              onChange={handleNomeChange}
             />
           </div>
           <div className="flex flex-col p-2">
@@ -300,6 +352,26 @@ export const FormComponent = () => {
               className="w-6 h-6"
             />
           </div>
+          <div className="flex items-center p-2 mt-4">
+            <label className="font-bold text-[#ffffff] mr-2">Necessita Troco</label>
+            <input
+              type="checkbox"
+              checked={necessitaTroco}
+              onChange={handleNecessitaTrocoChange}
+              className="w-6 h-6"
+            />
+          </div>
+          {necessitaTroco && (
+            <div className="flex flex-col p-2">
+              <label className="font-semibold text-[#ffffff]">Valor Pago:</label>
+              <input
+                className="border border-gray-300 focus:border-2 focus:border-[#1d3099] focus:outline-none bg-gray-700 p-2 text-white rounded"
+                type="number"
+                value={valorPago}
+                onChange={handleValorPagoChange}
+              />
+            </div>
+          )}
           <div className="flex justify-center">
             <button
               onClick={handleAdicionarPedido}
@@ -329,8 +401,8 @@ export const FormComponent = () => {
                 </div>
               </div>
               <div className="col-span-3 text-white font-bold mb-2">
-                Endereço:
-                <div className="font-normal">{item.endereco}</div>
+                Nome do Cliente:
+                <div className="font-normal">{item.nome}</div>
               </div>
               <div className="col-span-3 text-white font-bold mb-2">
                 Valor:
@@ -344,9 +416,21 @@ export const FormComponent = () => {
                 Hora:
                 <div className="font-normal">{item.hora}</div>
               </div>
+              {item.valorPago !== undefined && (
+                <div className="col-span-3 text-white font-bold mb-2">
+                  Valor Pago:
+                  <div className="font-normal">R$ {item.valorPago.toFixed(2)}</div>
+                </div>
+              )}
+              {item.troco !== undefined && (
+                <div className="col-span-3 text-white font-bold mb-2">
+                  Troco:
+                  <div className="font-normal">R$ {item.troco.toFixed(2)}</div>
+                </div>
+              )}
             </div>
             <div className="flex justify-between items-center mt-4">
-            <button
+              <button
                 onClick={() => handleWhatsApp(lista.length - 1)}
                 className="bg-green-500 p-2 rounded-full text-white flex items-center space-x-2">
                 <FaWhatsapp />
